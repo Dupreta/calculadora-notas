@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculadora de Notas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+    body {
+      margin: 0;
+      background-color: #121212;
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      transition: all 0.3s ease;
+    }
+    h1 {
+      color: #ff1744;
+      margin-bottom: 2rem;
+      font-size: 2.5rem;
+      text-align: center;
+    }
+    .container {
+      background-color: #1e1e1e;
+      padding: 2rem;
+      border-radius: 1.25rem;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 0 25px rgba(255, 23, 68, 0.25);
+      transition: transform 0.3s ease;
+    }
+    label {
+      display: block;
+      margin-top: 1.25rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    input, select {
+      width: 100%;
+      padding: 0.6rem;
+      margin-top: 0.4rem;
+      border-radius: 0.6rem;
+      border: none;
+      background-color: #2a2a2a;
+      color: #fff;
+      font-size: 0.95rem;
+    }
+    button {
+      margin-top: 1.8rem;
+      width: 100%;
+      padding: 0.8rem;
+      background-color: #ff1744;
+      color: #fff;
+      border: none;
+      border-radius: 0.8rem;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.3s ease;
+    }
+    button:hover {
+      background-color: #ff4a69;
+      transform: scale(1.02);
+    }
+    .resultado {
+      margin-top: 1.8rem;
+      font-size: 1.05rem;
+      text-align: center;
+      opacity: 0;
+      animation: fadeIn 0.8s ease forwards;
+    }
+    .historial {
+      margin-top: 2.5rem;
+      background-color: #2a2a2a;
+      border-radius: 1rem;
+      padding: 1.2rem;
+    }
+    .historial h2 {
+      color: #ff1744;
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+    }
+    ul {
+      padding-left: 1.2rem;
+    }
+    li {
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <h1>Calculadora de Notas</h1>
+  <div class="container">
+    <label for="fase">¿Pre-trimestral o Post-trimestral?</label>
+    <select id="fase" onchange="mostrarFormulario()">
+      <option value="">Selecciona...</option>
+      <option value="pre">Pre-trimestral</option>
+      <option value="post">Post-trimestral</option>
+    </select>
+
+    <div id="formularioNotas" style="display:none">
+      <label for="materia">Materia</label>
+      <input type="text" id="materia" placeholder="Ej: Matemáticas" />
+
+      <label for="numIndicadores">¿Cuántos indicadores? (3 o 4)</label>
+      <select id="numIndicadores" onchange="generarInputsIndicadores()">
+        <option value="">Selecciona...</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+
+      <div id="indicadoresContainer"></div>
+
+      <button onclick="calcularNota()">Calcular</button>
+
+      <div class="resultado" id="resultado"></div>
+
+      <button onclick="guardarNota()">Guardar Resultado</button>
+
+      <div class="historial">
+        <h2>Historial</h2>
+        <ul id="historial"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function mostrarFormulario() {
+      document.getElementById('formularioNotas').style.display = 'block';
+      document.getElementById('indicadoresContainer').innerHTML = '';
+    }
+
+    function generarInputsIndicadores() {
+      const cantidad = parseInt(document.getElementById('numIndicadores').value);
+      const contenedor = document.getElementById('indicadoresContainer');
+      contenedor.innerHTML = '';
+
+      for (let i = 1; i <= cantidad; i++) {
+        contenedor.innerHTML += `
+          <label>Indicador ${i} - Diagnóstica (25%)</label>
+          <input type="number" id="diag${i}" min="10" max="50" step="0.1">
+
+          <label>Indicador ${i} - Notas generales (55%) (separadas por comas)</label>
+          <input type="text" id="nota${i}" placeholder="Ej: 40,45,50">
+        `;
+
+        if (document.getElementById('fase').value === 'post') {
+          contenedor.innerHTML += `
+            <label>Indicador ${i} - Trimestral (20%)</label>
+            <input type="number" id="trimestral${i}" min="10" max="50" step="0.1">
+          `;
+        }
+      }
+    }
+
+    function calcularNota() {
+      const fase = document.getElementById('fase').value;
+      const cantidad = parseInt(document.getElementById('numIndicadores').value);
+      let notasFinales = [];
+
+      for (let i = 1; i <= cantidad; i++) {
+        const diag = parseFloat(document.getElementById(`diag${i}`).value) || 0;
+        const notasTexto = document.getElementById(`nota${i}`).value;
+        const notasArray = notasTexto.split(',').map(n => parseFloat(n.trim())).filter(n => !isNaN(n));
+        const promedioNotas = notasArray.reduce((a, b) => a + b, 0) / notasArray.length || 0;
+
+        let final = 0;
+
+        if (fase === 'pre') {
+          final = (diag * 0.25 + promedioNotas * 0.55) / 0.80;
+        } else {
+          const trimestral = parseFloat(document.getElementById(`trimestral${i}`).value) || 0;
+          final = diag * 0.25 + promedioNotas * 0.55 + trimestral * 0.20;
+        }
+
+        notasFinales.push(final);
+      }
+
+      const promedio = notasFinales.reduce((a, b) => a + b, 0) / cantidad;
+
+      let nivel = '';
+      if (promedio >= 46) nivel = 'Superior';
+      else if (promedio >= 40) nivel = 'Alto';
+      else if (promedio >= 35) nivel = 'Básico';
+      else nivel = 'Bajo';
+
+      const redondeadas = notasFinales.map(n => Math.round(n));
+      const eximido = redondeadas.every(n => n >= 46) ? '¡Estás eximido!' : 'No estás eximido';
+
+      const resultado = document.getElementById('resultado');
+      resultado.innerHTML = `
+        <strong>${document.getElementById('materia').value}</strong><br>
+        Promedio general: ${promedio.toFixed(2)}<br>
+        Nivel: ${nivel}<br>
+        ${eximido}
+      `;
+      resultado.style.opacity = 1;
+    }
+
+    function guardarNota() {
+      const texto = document.getElementById('resultado').innerHTML;
+      if (!texto) return;
+
+      const historial = JSON.parse(localStorage.getItem('notasHistorial') || '[]');
+      historial.unshift(texto);
+      localStorage.setItem('notasHistorial', JSON.stringify(historial));
+      mostrarHistorial();
+    }
+
+    function mostrarHistorial() {
+      const historial = JSON.parse(localStorage.getItem('notasHistorial') || '[]');
+      const ul = document.getElementById('historial');
+      ul.innerHTML = '';
+      historial.slice(0, 5).forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = item;
+        ul.appendChild(li);
+      });
+    }
+
+    mostrarHistorial();
+  </script>
+</body>
+</html>
